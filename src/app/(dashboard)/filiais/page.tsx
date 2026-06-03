@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { GitBranch, MapPin, Phone, Users, Calendar } from "lucide-react";
+import { AddFilialDialog } from "@/components/filiais/add-filial-dialog";
 
 async function getBranches(userId: string) {
   const user = await prisma.user.findUnique({
@@ -91,6 +92,8 @@ export default async function FiliaisPage() {
           ))}
         </div>
       )}
+
+      <AddFilialDialog />
     </div>
   );
 }

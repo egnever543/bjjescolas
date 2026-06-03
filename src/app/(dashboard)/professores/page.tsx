@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { BELT_COLORS, BELT_LABELS, MODALITY_LABELS } from "@/types";
 import type { Belt, Modality } from "@/types";
 import { GraduationCap } from "lucide-react";
+import { AddProfessorDialog } from "@/components/professores/add-professor-dialog";
 
 async function getProfessors(userId: string) {
   const user = await prisma.user.findUnique({
@@ -12,15 +13,16 @@ async function getProfessors(userId: string) {
     include: {
       ownedAcademy: {
         include: {
-          branches: { select: { id: true } },
+          branches: { select: { id: true, name: true } },
         },
       },
     },
   });
 
   const branchIds = user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
+  const branches = user?.ownedAcademy?.branches ?? [];
 
-  return prisma.professor.findMany({
+  const professors = await prisma.professor.findMany({
     where: { branchId: { in: branchIds } },
     include: {
       user: true,
@@ -28,11 +30,15 @@ async function getProfessors(userId: string) {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  return { professors, branches };
 }
 
 export default async function ProfessoresPage() {
   const session = await auth();
-  const professors = session?.user?.id ? await getProfessors(session.user.id) : [];
+  const { professors, branches } = session?.user?.id
+    ? await getProfessors(session.user.id)
+    : { professors: [], branches: [] };
 
   return (
     <div className="p-4 md:p-6">
@@ -96,6 +102,8 @@ export default async function ProfessoresPage() {
           })}
         </div>
       )}
+
+      <AddProfessorDialog branches={branches} />
     </div>
   );
 }

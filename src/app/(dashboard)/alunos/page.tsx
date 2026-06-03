@@ -1,12 +1,12 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { BELT_COLORS, BELT_LABELS, MODALITY_LABELS } from "@/types";
 import type { Belt, Modality } from "@/types";
 import { Input } from "@/components/ui/input";
+import { AddAlunoDialog } from "@/components/alunos/add-aluno-dialog";
 
 async function getStudents(userId: string, search?: string) {
   const user = await prisma.user.findUnique({
@@ -14,7 +14,7 @@ async function getStudents(userId: string, search?: string) {
     include: {
       ownedAcademy: {
         include: {
-          branches: { select: { id: true } },
+          branches: { select: { id: true, name: true } },
         },
       },
     },
@@ -22,7 +22,7 @@ async function getStudents(userId: string, search?: string) {
 
   const branchIds = user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
 
-  return prisma.student.findMany({
+  const students = await prisma.student.findMany({
     where: {
       branchId: { in: branchIds },
       ...(search
@@ -39,6 +39,8 @@ async function getStudents(userId: string, search?: string) {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  return { students, branches: user?.ownedAcademy?.branches ?? [] };
 }
 
 export default async function AlunosPage({
@@ -48,7 +50,9 @@ export default async function AlunosPage({
 }) {
   const session = await auth();
   const params = await searchParams;
-  const students = session?.user?.id ? await getStudents(session.user.id, params.q) : [];
+  const { students, branches } = session?.user?.id
+    ? await getStudents(session.user.id, params.q)
+    : { students: [], branches: [] };
 
   return (
     <div className="p-4 md:p-6">
@@ -71,13 +75,7 @@ export default async function AlunosPage({
       {students.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-gray-500 mb-4">Nenhum aluno cadastrado</p>
-          <Link
-            href="/alunos/novo"
-            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar primeiro aluno
-          </Link>
+          <p className="text-gray-500 mb-4">Clique no botão + para adicionar o primeiro aluno.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -120,14 +118,7 @@ export default async function AlunosPage({
         </div>
       )}
 
-      {/* FAB */}
-      <Link
-        href="/alunos/novo"
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors z-40"
-        aria-label="Adicionar aluno"
-      >
-        <Plus className="w-6 h-6" />
-      </Link>
+      <AddAlunoDialog branches={branches} />
     </div>
   );
 }

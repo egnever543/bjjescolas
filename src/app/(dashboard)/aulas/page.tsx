@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DAY_FULL_LABELS, MODALITY_LABELS } from "@/types";
 import type { DayOfWeek, Modality } from "@/types";
 import { Clock, User } from "lucide-react";
+import { AddAulaDialog } from "@/components/aulas/add-aula-dialog";
 
 const DAYS_ORDER: DayOfWeek[] = [
   "SEGUNDA",
@@ -32,15 +33,16 @@ async function getClasses(userId: string) {
     include: {
       ownedAcademy: {
         include: {
-          branches: { select: { id: true } },
+          branches: { select: { id: true, name: true } },
         },
       },
     },
   });
 
   const branchIds = user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
+  const branches = user?.ownedAcademy?.branches ?? [];
 
-  return prisma.class.findMany({
+  const classes = await prisma.class.findMany({
     where: { branchId: { in: branchIds } },
     include: {
       professor: { include: { user: true } },
@@ -48,11 +50,20 @@ async function getClasses(userId: string) {
     },
     orderBy: { startTime: "asc" },
   });
+
+  const professors = await prisma.professor.findMany({
+    where: { branchId: { in: branchIds } },
+    include: { user: true },
+  });
+
+  return { classes, branches, professors };
 }
 
 export default async function AulasPage() {
   const session = await auth();
-  const classes = session?.user?.id ? await getClasses(session.user.id) : [];
+  const { classes, branches, professors } = session?.user?.id
+    ? await getClasses(session.user.id)
+    : { classes: [], branches: [], professors: [] };
 
   const byDay = DAYS_ORDER.reduce(
     (acc, day) => {
@@ -120,6 +131,8 @@ export default async function AulasPage() {
           ))}
         </div>
       )}
+
+      <AddAulaDialog branches={branches} professors={professors} />
     </div>
   );
 }

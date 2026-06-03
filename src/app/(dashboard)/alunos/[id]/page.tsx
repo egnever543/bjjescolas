@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BELT_COLORS, BELT_LABELS, MODALITY_LABELS } from "@/types";
@@ -10,6 +9,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, Phone, MapPin, Heart } from "lucide-react";
 import Link from "next/link";
+import { AddGraduationDialog } from "@/components/alunos/add-graduation-dialog";
 
 async function getStudent(id: string) {
   return prisma.student.findUnique({
@@ -161,6 +161,9 @@ export default async function AlunoDetailPage({ params }: { params: Promise<{ id
           <TabsContent value="graduacoes" className="mt-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-4">
+                <div className="flex justify-end mb-4">
+                  <AddGraduationDialog studentId={student.id} />
+                </div>
                 {student.graduations.length === 0 ? (
                   <p className="text-gray-500 text-center py-6 text-sm">
                     Nenhuma graduação registrada
