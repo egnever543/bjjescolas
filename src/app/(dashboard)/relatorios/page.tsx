@@ -1,37 +1,42 @@
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, TrendingUp, AlertTriangle } from "lucide-react";
 import { BELT_LABELS } from "@/types";
 import type { Belt } from "@/types";
-
-type ReportData = {
-  totalAlunos: number;
-  alunosPorFaixa: { belt: string; count: number }[];
-  frequenciaMedia: number;
-  inadimplentes: number;
-  checkinsPorDia: { dia: string; count: number }[];
-  topAulas: { name: string; count: number }[];
-};
-
-async function getReportData(baseUrl: string): Promise<ReportData | null> {
-  try {
-    const res = await fetch(`${baseUrl}/api/relatorios`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
+import { subDays, startOfDay, format } from "date-fns";
 
 export default async function RelatoriosPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-  const data = await getReportData(baseUrl);
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      ownedAcademy: {
+        include: {
+          branches: {
+            include: {
+              students: {
+                include: {
+                  payments: { orderBy: { dueDate: "desc" }, take: 1 },
+                  checkIns: true,
+                },
+              },
+              classes: {
+                include: { checkIns: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
 
-  if (!data) {
+  const academy = user?.ownedAcademy;
+
+  if (!academy) {
     return (
       <div className="p-4 md:p-6">
         <h1 className="text-2xl font-black text-white mb-6">Relatórios</h1>
@@ -44,38 +49,85 @@ export default async function RelatoriosPage() {
     );
   }
 
-  const maxBeltCount = Math.max(...data.alunosPorFaixa.map((b) => b.count), 1);
+  const allStudents = academy.branches.flatMap((b) => b.students);
+  const allClasses = academy.branches.flatMap((b) => b.classes);
+  const allBranchIds = academy.branches.map((b) => b.id);
+
+  // Belt distribution
+  const beltCount: Record<string, number> = {};
+  for (const student of allStudents) {
+    beltCount[student.belt] = (beltCount[student.belt] || 0) + 1;
+  }
+  const alunosPorFaixa = Object.entries(beltCount).map(([belt, count]) => ({ belt, count }));
+
+  // Average frequency
+  const totalCheckIns = allStudents.reduce((sum, s) => sum + s.checkIns.length, 0);
+  const frequenciaMedia = allStudents.length > 0
+    ? Math.round((totalCheckIns / allStudents.length) * 10) / 10
+    : 0;
+
+  // Inadimplentes
+  const inadimplentes = allStudents.filter((s) => {
+    const latest = s.payments[0];
+    if (!latest) return false;
+    return latest.status === "OVERDUE" || latest.status === "PENDING";
+  }).length;
+
+  // Check-ins last 7 days
+  const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
+  const recentCheckIns = await prisma.checkIn.findMany({
+    where: {
+      student: { branchId: { in: allBranchIds } },
+      date: { gte: sevenDaysAgo },
+    },
+  });
+
+  const checkinsPorDiaMap: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    checkinsPorDiaMap[format(subDays(new Date(), i), "dd/MM")] = 0;
+  }
+  for (const ci of recentCheckIns) {
+    const day = format(ci.date, "dd/MM");
+    if (day in checkinsPorDiaMap) checkinsPorDiaMap[day]++;
+  }
+  const checkinsPorDia = Object.entries(checkinsPorDiaMap).map(([dia, count]) => ({ dia, count }));
+
+  // Top 3 classes
+  const topAulas = allClasses
+    .map((cls) => ({ name: cls.name, count: cls.checkIns.length }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  const maxBeltCount = Math.max(...alunosPorFaixa.map((b) => b.count), 1);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       <h1 className="text-2xl font-black text-white">Relatórios</h1>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="bg-blue-900/20 border-blue-800/30">
           <CardContent className="p-4">
             <Users className="w-5 h-5 text-blue-400 mb-2" />
-            <p className="text-2xl font-black text-white">{data.totalAlunos}</p>
+            <p className="text-2xl font-black text-white">{allStudents.length}</p>
             <p className="text-xs text-gray-400">Total de Alunos</p>
           </CardContent>
         </Card>
         <Card className="bg-green-900/20 border-green-800/30">
           <CardContent className="p-4">
             <TrendingUp className="w-5 h-5 text-green-400 mb-2" />
-            <p className="text-2xl font-black text-white">{data.frequenciaMedia}</p>
+            <p className="text-2xl font-black text-white">{frequenciaMedia}</p>
             <p className="text-xs text-gray-400">Frequência Média</p>
           </CardContent>
         </Card>
         <Card className="bg-red-900/20 border-red-800/30">
           <CardContent className="p-4">
             <AlertTriangle className="w-5 h-5 text-red-400 mb-2" />
-            <p className="text-2xl font-black text-white">{data.inadimplentes}</p>
+            <p className="text-2xl font-black text-white">{inadimplentes}</p>
             <p className="text-xs text-gray-400">Inadimplentes</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Belt distribution */}
       <Card className="bg-gray-900 border-gray-800">
         <CardHeader className="pb-3">
           <CardTitle className="text-gray-300 text-sm font-semibold uppercase tracking-wider">
@@ -83,20 +135,18 @@ export default async function RelatoriosPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {data.alunosPorFaixa.length === 0 ? (
+          {alunosPorFaixa.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-4">Nenhum dado</p>
           ) : (
-            data.alunosPorFaixa.map(({ belt, count }) => (
+            alunosPorFaixa.map(({ belt, count }) => (
               <div key={belt} className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-300 text-sm">
-                    {BELT_LABELS[belt as Belt] ?? belt}
-                  </span>
+                  <span className="text-gray-300 text-sm">{BELT_LABELS[belt as Belt] ?? belt}</span>
                   <span className="text-gray-400 text-sm font-semibold">{count}</span>
                 </div>
                 <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-red-600 rounded-full transition-all"
+                    className="h-full bg-red-600 rounded-full"
                     style={{ width: `${(count / maxBeltCount) * 100}%` }}
                   />
                 </div>
@@ -106,7 +156,6 @@ export default async function RelatoriosPage() {
         </CardContent>
       </Card>
 
-      {/* Check-ins last 7 days */}
       <Card className="bg-gray-900 border-gray-800">
         <CardHeader className="pb-3">
           <CardTitle className="text-gray-300 text-sm font-semibold uppercase tracking-wider">
@@ -115,7 +164,7 @@ export default async function RelatoriosPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {data.checkinsPorDia.map(({ dia, count }) => (
+            {checkinsPorDia.map(({ dia, count }) => (
               <div key={dia} className="flex items-center justify-between py-1 border-b border-gray-800 last:border-0">
                 <span className="text-gray-400 text-sm">{dia}</span>
                 <span className="text-white font-semibold text-sm">{count} check-ins</span>
@@ -125,8 +174,7 @@ export default async function RelatoriosPage() {
         </CardContent>
       </Card>
 
-      {/* Top 3 classes */}
-      {data.topAulas.length > 0 && (
+      {topAulas.length > 0 && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-gray-300 text-sm font-semibold uppercase tracking-wider">
@@ -134,14 +182,10 @@ export default async function RelatoriosPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {data.topAulas.map(({ name, count }, index) => (
+            {topAulas.map(({ name, count }, index) => (
               <div key={name} className="flex items-center gap-3">
-                <span className="text-gray-500 font-bold text-sm w-5 text-center">
-                  {index + 1}
-                </span>
-                <div className="flex-1">
-                  <p className="text-white text-sm font-medium">{name}</p>
-                </div>
+                <span className="text-gray-500 font-bold text-sm w-5 text-center">{index + 1}</span>
+                <p className="flex-1 text-white text-sm font-medium">{name}</p>
                 <span className="text-gray-400 text-sm">{count} check-ins</span>
               </div>
             ))}
