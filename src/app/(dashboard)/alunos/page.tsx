@@ -36,6 +36,7 @@ async function getStudents(userId: string, search?: string) {
     include: {
       user: true,
       branch: true,
+      payments: { orderBy: { dueDate: "desc" }, take: 1 },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -111,6 +112,17 @@ export default async function AlunosPage({
                   <span className="text-gray-500 text-xs">
                     {MODALITY_LABELS[student.modality as Modality]}
                   </span>
+                  {student.payments[0] && (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                      student.payments[0].status === "PAID"
+                        ? "bg-green-900/30 text-green-400"
+                        : student.payments[0].status === "OVERDUE"
+                        ? "bg-red-900/30 text-red-400"
+                        : "bg-yellow-900/30 text-yellow-400"
+                    }`}>
+                      {student.payments[0].status === "PAID" ? "Pago" : student.payments[0].status === "OVERDUE" ? "Atrasado" : "Pendente"}
+                    </span>
+                  )}
                 </div>
               </Link>
             );

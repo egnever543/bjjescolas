@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
@@ -13,21 +13,30 @@ import {
   GitBranch,
   LogOut,
   Dumbbell,
+  DollarSign,
+  Bell,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/alunos", label: "Alunos", icon: Users },
-  { href: "/professores", label: "Professores", icon: GraduationCap },
-  { href: "/aulas", label: "Grade de Aulas", icon: Calendar },
-  { href: "/checkin", label: "Check-in", icon: CheckSquare },
-  { href: "/academias", label: "Academias", icon: Building2 },
-  { href: "/filiais", label: "Filiais", icon: GitBranch },
+const baseNavItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: null },
+  { href: "/alunos", label: "Alunos", icon: Users, roles: null },
+  { href: "/professores", label: "Professores", icon: GraduationCap, roles: null },
+  { href: "/aulas", label: "Grade de Aulas", icon: Calendar, roles: null },
+  { href: "/checkin", label: "Check-in", icon: CheckSquare, roles: null },
+  { href: "/academias", label: "Academias", icon: Building2, roles: null },
+  { href: "/filiais", label: "Filiais", icon: GitBranch, roles: null },
+  { href: "/financeiro", label: "Financeiro", icon: DollarSign, roles: ["ACADEMY_OWNER"] },
+  { href: "/avisos", label: "Avisos", icon: Bell, roles: null },
+  { href: "/relatorios", label: "Relatórios", icon: BarChart2, roles: ["ACADEMY_OWNER", "MASTER"] },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const navItems = baseNavItems.filter((item) => !item.roles || (role && item.roles.includes(role)));
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-gray-950 border-r border-gray-800 min-h-screen">

@@ -6,7 +6,7 @@ import { BELT_COLORS, BELT_LABELS, MODALITY_LABELS, DAY_FULL_LABELS } from "@/ty
 import type { Belt, Modality, DayOfWeek } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, CheckSquare, Clock } from "lucide-react";
+import { Calendar, CheckSquare, Clock, Bell } from "lucide-react";
 import Link from "next/link";
 
 async function getStudentData(userId: string) {
@@ -19,6 +19,16 @@ async function getStudentData(userId: string) {
           classes: {
             include: { professor: { include: { user: true } } },
             orderBy: { startTime: "asc" },
+          },
+          academy: {
+            include: {
+              announcements: {
+                where: { OR: [{ branchId: null }] },
+                include: { createdBy: { select: { name: true } } },
+                orderBy: { createdAt: "desc" },
+                take: 3,
+              },
+            },
           },
         },
       },
@@ -117,6 +127,34 @@ export default async function MinhaAreaPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Announcements */}
+      {student.branch.academy.announcements.length > 0 && (
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-gray-300 text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                Avisos
+              </CardTitle>
+              <Link href="/minha-area/avisos" className="text-red-400 text-xs font-medium hover:text-red-300">
+                Ver todos
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {student.branch.academy.announcements.map((a) => (
+              <div key={a.id} className="border-b border-gray-800 last:border-0 pb-3 last:pb-0">
+                <p className="text-white text-sm font-medium">{a.title}</p>
+                <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">{a.content}</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  {a.createdBy.name.split(" ")[0]} · {format(a.createdAt, "dd/MM/yyyy", { locale: ptBR })}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent check-ins */}
       <Card className="bg-gray-900 border-gray-800">

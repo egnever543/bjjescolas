@@ -27,7 +27,7 @@ export default auth((req) => {
 
   // STUDENT trying to access dashboard routes
   if (role === "STUDENT") {
-    const dashboardPaths = ["/dashboard", "/alunos", "/filiais", "/professores", "/aulas", "/checkin", "/academias"];
+    const dashboardPaths = ["/dashboard", "/alunos", "/filiais", "/professores", "/aulas", "/checkin", "/academias", "/financeiro", "/avisos", "/relatorios"];
     if (dashboardPaths.some((p) => pathname.startsWith(p))) {
       return NextResponse.redirect(new URL("/minha-area", req.url));
     }

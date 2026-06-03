@@ -10,6 +10,7 @@ import { ptBR } from "date-fns/locale";
 import { ArrowLeft, Phone, MapPin, Heart } from "lucide-react";
 import Link from "next/link";
 import { AddGraduationDialog } from "@/components/alunos/add-graduation-dialog";
+import { StudentFinanceiroTab } from "@/components/alunos/student-financeiro-tab";
 
 async function getStudent(id: string) {
   return prisma.student.findUnique({
@@ -23,6 +24,7 @@ async function getStudent(id: string) {
         orderBy: { date: "desc" },
         take: 30,
       },
+      payments: { orderBy: { dueDate: "desc" } },
     },
   });
 }
@@ -94,6 +96,9 @@ export default async function AlunoDetailPage({ params }: { params: Promise<{ id
             </TabsTrigger>
             <TabsTrigger value="frequencia" className="flex-1 data-[state=active]:bg-red-600 data-[state=active]:text-white text-gray-400">
               Frequência
+            </TabsTrigger>
+            <TabsTrigger value="financeiro" className="flex-1 data-[state=active]:bg-red-600 data-[state=active]:text-white text-gray-400">
+              Financeiro
             </TabsTrigger>
           </TabsList>
 
@@ -222,6 +227,19 @@ export default async function AlunoDetailPage({ params }: { params: Promise<{ id
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="financeiro" className="mt-4">
+            <StudentFinanceiroTab
+              studentId={student.id}
+              payments={student.payments.map((p) => ({
+                ...p,
+                dueDate: p.dueDate.toISOString(),
+                paidAt: p.paidAt?.toISOString() ?? null,
+                createdAt: p.createdAt.toISOString(),
+                updatedAt: p.updatedAt.toISOString(),
+              }))}
+            />
           </TabsContent>
         </Tabs>
       </div>

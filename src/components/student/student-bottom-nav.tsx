@@ -2,27 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Calendar, CheckSquare, Bell, Menu } from "lucide-react";
+import { LayoutDashboard, CheckSquare, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", label: "Início", icon: LayoutDashboard },
-  { href: "/alunos", label: "Alunos", icon: Users },
-  { href: "/aulas", label: "Aulas", icon: Calendar },
-  { href: "/checkin", label: "Check-in", icon: CheckSquare },
-  { href: "/avisos", label: "Avisos", icon: Bell },
-  { href: "/academias", label: "Menu", icon: Menu },
+  { href: "/minha-area", label: "Início", icon: LayoutDashboard },
+  { href: "/minha-area/checkin", label: "Check-in", icon: CheckSquare },
+  { href: "/minha-area/avisos", label: "Avisos", icon: Bell },
 ];
 
-export function BottomNav() {
+export function StudentBottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-800 z-50">
-      <div className="flex items-center justify-around px-2 py-2 safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-800 z-50">
+      <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = pathname === item.href || (item.href !== "/minha-area" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}

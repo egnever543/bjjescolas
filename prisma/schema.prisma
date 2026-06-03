@@ -59,12 +59,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  ownedBrand    Brand?    @relation("BrandOwner")
-  ownedAcademy  Academy?  @relation("AcademyOwner")
+  ownedBrand    Brand?         @relation("BrandOwner")
+  ownedAcademy  Academy?       @relation("AcademyOwner")
   professor     Professor?
   student       Student?
   accounts      Account[]
   sessions      Session[]
+  announcements Announcement[] @relation("AnnouncementAuthor")
 }
 
 model Account {
@@ -116,12 +117,13 @@ model Academy {
   phone       String?
   brandId     String?
   brand       Brand?     @relation(fields: [brandId], references: [id])
-  ownerId     String     @unique
-  owner       User       @relation("AcademyOwner", fields: [ownerId], references: [id])
-  branches    Branch[]
-  modalities  Modality[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  ownerId       String         @unique
+  owner         User           @relation("AcademyOwner", fields: [ownerId], references: [id])
+  branches      Branch[]
+  modalities    Modality[]
+  announcements Announcement[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Branch {
@@ -133,11 +135,12 @@ model Branch {
   phone      String?
   academyId  String
   academy    Academy     @relation(fields: [academyId], references: [id])
-  professors Professor[]
-  students   Student[]
-  classes    Class[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  professors    Professor[]
+  students      Student[]
+  classes       Class[]
+  announcements Announcement[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Professor {
@@ -176,6 +179,7 @@ model Student {
   enrolledAt       DateTime     @default(now())
   graduations      Graduation[]
   checkIns         CheckIn[]
+  payments         Payment[]
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 }
@@ -218,4 +222,38 @@ model CheckIn {
   createdAt DateTime @default(now())
 
   @@unique([studentId, classId, date])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  studentId   String
+  student     Student       @relation(fields: [studentId], references: [id])
+  amount      Float
+  dueDate     DateTime
+  paidAt      DateTime?
+  status      PaymentStatus @default(PENDING)
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  academyId   String
+  academy     Academy  @relation(fields: [academyId], references: [id])
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  createdById String
+  createdBy   User     @relation("AnnouncementAuthor", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

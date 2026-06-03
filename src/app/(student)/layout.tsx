@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOutButton } from "@/components/student/logout-button";
+import { StudentBottomNav } from "@/components/student/student-bottom-nav";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -31,7 +32,8 @@ export default async function StudentLayout({ children }: { children: React.Reac
           <LogOutButton />
         </div>
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-16">{children}</main>
+      <StudentBottomNav />
     </div>
   );
 }
