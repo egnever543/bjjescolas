@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  MASTER
+  ACADEMY_OWNER
+  PROFESSOR
+  STUDENT
+}
+
+enum Belt {
+  BRANCA
+  CINZA
+  AMARELA
+  LARANJA
+  VERDE
+  AZUL
+  ROXA
+  MARROM
+  PRETA
+  CORAL
+  VERMELHA
+}
+
+enum Modality {
+  BJJ
+  MUAY_THAI
+  JUDO
+  WRESTLING
+  BOXE
+  MMA
+  KARATE
+  OUTRO
+}
+
+enum DayOfWeek {
+  SEGUNDA
+  TERCA
+  QUARTA
+  QUINTA
+  SEXTA
+  SABADO
+  DOMINGO
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          Role      @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  ownedBrand    Brand?    @relation("BrandOwner")
+  ownedAcademy  Academy?  @relation("AcademyOwner")
+  professor     Professor?
+  student       Student?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Brand {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  logo        String?
+  ownerId     String    @unique
+  owner       User      @relation("BrandOwner", fields: [ownerId], references: [id])
+  academies   Academy[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Academy {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  logo        String?
+  address     String?
+  city        String?
+  state       String?
+  phone       String?
+  brandId     String?
+  brand       Brand?     @relation(fields: [brandId], references: [id])
+  ownerId     String     @unique
+  owner       User       @relation("AcademyOwner", fields: [ownerId], references: [id])
+  branches    Branch[]
+  modalities  Modality[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Branch {
+  id         String      @id @default(cuid())
+  name       String
+  address    String?
+  city       String?
+  state      String?
+  phone      String?
+  academyId  String
+  academy    Academy     @relation(fields: [academyId], references: [id])
+  professors Professor[]
+  students   Student[]
+  classes    Class[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Professor {
+  id         String     @id @default(cuid())
+  userId     String     @unique
+  user       User       @relation(fields: [userId], references: [id])
+  branchId   String
+  branch     Branch     @relation(fields: [branchId], references: [id])
+  belt       Belt       @default(PRETA)
+  degree     Int        @default(0)
+  modalities Modality[]
+  bio        String?
+  classes    Class[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Student {
+  id               String       @id @default(cuid())
+  userId           String       @unique
+  user             User         @relation(fields: [userId], references: [id])
+  branchId         String
+  branch           Branch       @relation(fields: [branchId], references: [id])
+  birthDate        DateTime?
+  phone            String?
+  address          String?
+  city             String?
+  state            String?
+  emergencyContact String?
+  emergencyPhone   String?
+  bloodType        String?
+  healthNotes      String?
+  belt             Belt         @default(BRANCA)
+  degree           Int          @default(0)
+  modality         Modality     @default(BJJ)
+  enrolledAt       DateTime     @default(now())
+  graduations      Graduation[]
+  checkIns         CheckIn[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model Graduation {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  belt       Belt
+  degree     Int
+  notes      String?
+  promotedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+}
+
+model Class {
+  id          String    @id @default(cuid())
+  name        String
+  modality    Modality
+  dayOfWeek   DayOfWeek
+  startTime   String
+  endTime     String
+  maxStudents Int?
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  professorId String
+  professor   Professor @relation(fields: [professorId], references: [id])
+  checkIns    CheckIn[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id])
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, classId, date])
+}
