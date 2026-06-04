@@ -3,24 +3,23 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, MapPin, Phone, GitBranch } from "lucide-react";
 
-async function getAcademies(userId: string) {
+async function getAcademy(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      ownedAcademy: {
-        include: {
-          branches: true,
-          brand: true,
-        },
-      },
+      ownedAcademy: { include: { branches: true, brand: true } },
+      professor: { include: { branch: { include: { academy: { include: { branches: true, brand: true } } } } } },
     },
   });
-  return user?.ownedAcademy;
+
+  if (user?.ownedAcademy) return user.ownedAcademy;
+  if (user?.professor?.branch?.academy) return user.professor.branch.academy;
+  return null;
 }
 
 export default async function AcademiasPage() {
   const session = await auth();
-  const academy = session?.user?.id ? await getAcademies(session.user.id) : null;
+  const academy = session?.user?.id ? await getAcademy(session.user.id) : null;
 
   return (
     <div className="p-4 md:p-6">
@@ -71,7 +70,6 @@ export default async function AcademiasPage() {
                   {academy.address}
                 </div>
               )}
-
               <div className="border-t border-gray-800 pt-3 flex items-center gap-2">
                 <GitBranch className="w-4 h-4 text-gray-500" />
                 <span className="text-gray-400 text-sm">
@@ -90,10 +88,7 @@ export default async function AcademiasPage() {
                 <p className="text-gray-500 text-sm">Nenhuma modalidade cadastrada</p>
               ) : (
                 academy.modalities.map((mod) => (
-                  <span
-                    key={mod}
-                    className="bg-gray-800 text-gray-300 border border-gray-700 px-3 py-1 rounded-full text-sm"
-                  >
+                  <span key={mod} className="bg-gray-800 text-gray-300 border border-gray-700 px-3 py-1 rounded-full text-sm">
                     {mod}
                   </span>
                 ))
