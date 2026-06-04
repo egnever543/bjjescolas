@@ -29,6 +29,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 const updateSchema = z.object({
+  name: z.string().min(2).optional(),
+  email: z.string().email().optional(),
   phone: z.string().optional(),
   birthDate: z.string().optional(),
   belt: z.string().optional(),
@@ -53,6 +55,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const body = await req.json();
     const data = updateSchema.parse(body);
+
+    if (data.name || data.email) {
+      const student = await prisma.student.findUnique({ where: { id } });
+      if (student) {
+        await prisma.user.update({
+          where: { id: student.userId },
+          data: {
+            ...(data.name ? { name: data.name } : {}),
+            ...(data.email ? { email: data.email } : {}),
+          },
+        });
+      }
+    }
 
     const student = await prisma.student.update({
       where: { id },

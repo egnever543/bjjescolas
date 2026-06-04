@@ -11,13 +11,14 @@ import { ArrowLeft, Phone, MapPin, Heart } from "lucide-react";
 import Link from "next/link";
 import { AddGraduationDialog } from "@/components/alunos/add-graduation-dialog";
 import { StudentFinanceiroTab } from "@/components/alunos/student-financeiro-tab";
+import { EditAlunoButton } from "@/components/alunos/edit-aluno-button";
 
 async function getStudent(id: string) {
   return prisma.student.findUnique({
     where: { id },
     include: {
       user: true,
-      branch: { include: { academy: true } },
+      branch: { include: { academy: { include: { branches: { select: { id: true, name: true } } } } } },
       graduations: { orderBy: { promotedAt: "desc" } },
       checkIns: {
         include: { class: true },
@@ -64,7 +65,13 @@ export default async function AlunoDetailPage({ params }: { params: Promise<{ id
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-black text-white leading-tight">{student.user.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-black text-white leading-tight">{student.user.name}</h1>
+              <EditAlunoButton
+                aluno={{ ...student, birthDate: student.birthDate?.toISOString() ?? null }}
+                branches={student.branch.academy.branches}
+              />
+            </div>
             <p className="text-gray-400 text-sm">{student.branch.academy.name} - {student.branch.name}</p>
             <div className="flex items-center gap-2 mt-2">
               <span className={`text-xs font-bold px-2 py-1 rounded-full ${beltColor}`}>

@@ -1,12 +1,9 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import Link from "next/link";
 import { Search } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BELT_COLORS, BELT_LABELS, MODALITY_LABELS } from "@/types";
-import type { Belt, Modality } from "@/types";
 import { Input } from "@/components/ui/input";
 import { AddAlunoDialog } from "@/components/alunos/add-aluno-dialog";
+import { AlunosList } from "@/components/alunos/alunos-list";
 
 async function getStudents(userId: string, search?: string) {
   const user = await prisma.user.findUnique({
@@ -79,55 +76,7 @@ export default async function AlunosPage({
           <p className="text-gray-500 mb-4">Clique no botão + para adicionar o primeiro aluno.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {students.map((student) => {
-            const initials = student.user.name
-              .split(" ")
-              .slice(0, 2)
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase();
-
-            return (
-              <Link
-                key={student.id}
-                href={`/alunos/${student.id}`}
-                className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-3 transition-colors"
-              >
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarFallback className="bg-gray-700 text-white text-sm font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-sm truncate">{student.user.name}</p>
-                  <p className="text-gray-500 text-xs">{student.branch.name}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span
-                    className={`text-xs font-bold px-2 py-0.5 rounded-full ${BELT_COLORS[student.belt as Belt]}`}
-                  >
-                    {BELT_LABELS[student.belt as Belt]}
-                  </span>
-                  <span className="text-gray-500 text-xs">
-                    {MODALITY_LABELS[student.modality as Modality]}
-                  </span>
-                  {student.payments[0] && (
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                      student.payments[0].status === "PAID"
-                        ? "bg-green-900/30 text-green-400"
-                        : student.payments[0].status === "OVERDUE"
-                        ? "bg-red-900/30 text-red-400"
-                        : "bg-yellow-900/30 text-yellow-400"
-                    }`}>
-                      {student.payments[0].status === "PAID" ? "Pago" : student.payments[0].status === "OVERDUE" ? "Atrasado" : "Pendente"}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <AlunosList initialStudents={students} branches={branches} />
       )}
 
       <AddAlunoDialog branches={branches} />
