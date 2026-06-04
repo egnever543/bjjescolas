@@ -1,28 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { getAccessibleBranchIds, getAcademyId } from "@/lib/access";
 import { z } from "zod";
 
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+  const branchIds = await getAccessibleBranchIds(session.user.id!);
+
+  const branches = await prisma.branch.findMany({
+    where: { id: { in: branchIds } },
     include: {
-      ownedAcademy: {
-        include: {
-          branches: {
-            include: {
-              _count: { select: { students: true, professors: true, classes: true } },
-            },
-          },
-        },
-      },
+      _count: { select: { students: true, professors: true, classes: true } },
     },
   });
 
-  return NextResponse.json(user?.ownedAcademy?.branches ?? []);
+  return NextResponse.json(branches);
 }
 
 const createSchema = z.object({
@@ -41,24 +36,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = createSchema.parse(body);
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      include: { ownedAcademy: { select: { id: true } } },
-    });
-
-    if (!user?.ownedAcademy) {
+    const academyId = await getAcademyId(session.user.id!);
+    if (!academyId) {
       return NextResponse.json({ error: "Academia não encontrada" }, { status: 404 });
     }
 
     const branch = await prisma.branch.create({
-      data: {
-        name: data.name,
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        phone: data.phone,
-        academyId: user.ownedAcademy.id,
-      },
+      data: { ...data, academyId },
     });
 
     return NextResponse.json(branch, { status: 201 });

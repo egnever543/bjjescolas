@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { getAccessibleBranchIds } from "@/lib/access";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-
-async function getBranchIds(userId: string): Promise<string[]> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      ownedAcademy: { include: { branches: { select: { id: true } } } },
-    },
-  });
-  return user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
-}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -20,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("q") ?? undefined;
-  const branchIds = await getBranchIds(session.user.id);
+  const branchIds = await getAccessibleBranchIds(session.user.id!);
 
   const students = await prisma.student.findMany({
     where: {

@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { getAccessibleBranchIds } from "@/lib/access";
 import { z } from "zod";
 
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { ownedAcademy: { include: { branches: { select: { id: true } } } } },
-  });
-
-  const branchIds = user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
+  const branchIds = await getAccessibleBranchIds(session.user.id!);
 
   const classes = await prisma.class.findMany({
     where: { branchId: { in: branchIds } },
