@@ -11,6 +11,15 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "BJJ Escolas - Sistema de Gestão",
   description: "Sistema de gestão para academias de artes marciais",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BJJ Escolas",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
