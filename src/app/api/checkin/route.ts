@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { getAccessibleBranchIds } from "@/lib/access";
 import { z } from "zod";
 
 const schema = z.object({
@@ -17,6 +18,33 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { studentId, classId } = schema.parse(body);
+
+    // Valida aula e aluno, e autoriza conforme o papel.
+    const cls = await prisma.class.findUnique({
+      where: { id: classId },
+      select: { branchId: true },
+    });
+    if (!cls) return NextResponse.json({ error: "Aula inválida" }, { status: 404 });
+
+    const targetStudent = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { branchId: true, userId: true },
+    });
+    if (!targetStudent) return NextResponse.json({ error: "Aluno inválido" }, { status: 404 });
+
+    // O aluno precisa pertencer à filial da aula.
+    if (targetStudent.branchId !== cls.branchId) {
+      return NextResponse.json({ error: "Aluno não pertence à filial da aula" }, { status: 403 });
+    }
+
+    // Aluno pode marcar a si mesmo; gestor/professor precisa ter acesso à filial da aula.
+    const isSelfCheckin = targetStudent.userId === session.user.id;
+    if (!isSelfCheckin) {
+      const branchIds = await getAccessibleBranchIds(session.user.id!);
+      if (!branchIds.includes(cls.branchId)) {
+        return NextResponse.json({ error: "Sem permissão para esta filial" }, { status: 403 });
+      }
+    }
 
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getAccessibleBranchIds } from "@/lib/access";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,22 +10,8 @@ import type { Modality } from "@/types";
 import { Clock, Users } from "lucide-react";
 
 async function getTodayClasses(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      ownedAcademy: {
-        include: {
-          branches: {
-            include: {
-              students: { include: { user: true } },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const branchIds = user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
+  // Filiais acessíveis conforme o papel (professor -> a própria; dono -> as dele).
+  const branchIds = await getAccessibleBranchIds(userId);
 
   const dayMap: Record<number, string> = {
     0: "DOMINGO",
