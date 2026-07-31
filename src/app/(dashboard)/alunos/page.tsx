@@ -1,44 +1,43 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getAccessibleBranchIds } from "@/lib/access";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { AddAlunoDialog } from "@/components/alunos/add-aluno-dialog";
 import { AlunosList } from "@/components/alunos/alunos-list";
 
 async function getStudents(userId: string, search?: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      ownedAcademy: {
-        include: {
-          branches: { select: { id: true, name: true } },
-        },
+  // Filiais que o usuário pode acessar conforme o papel:
+  // ACADEMY_OWNER -> todas da academia | PROFESSOR -> a própria | MASTER -> todas da marca
+  const branchIds = await getAccessibleBranchIds(userId);
+
+  const [students, branches] = await Promise.all([
+    prisma.student.findMany({
+      where: {
+        branchId: { in: branchIds },
+        ...(search
+          ? {
+              user: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            }
+          : {}),
       },
-    },
-  });
+      include: {
+        user: true,
+        branch: true,
+        payments: { orderBy: { dueDate: "desc" }, take: 1 },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.branch.findMany({
+      where: { id: { in: branchIds } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
-  const branchIds = user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
-
-  const students = await prisma.student.findMany({
-    where: {
-      branchId: { in: branchIds },
-      ...(search
-        ? {
-            user: {
-              name: { contains: search, mode: "insensitive" },
-            },
-          }
-        : {}),
-    },
-    include: {
-      user: true,
-      branch: true,
-      payments: { orderBy: { dueDate: "desc" }, take: 1 },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return { students, branches: user?.ownedAcademy?.branches ?? [] };
+  return { students, branches };
 }
 
 export default async function AlunosPage({
