@@ -37,6 +37,7 @@ const updateSchema = z.object({
   belt: z.string().optional(),
   degree: z.number().optional(),
   modality: z.string().optional(),
+  image: z.string().optional(),
   branchId: z.string().optional(),
   emergencyContact: z.string().optional(),
   emergencyPhone: z.string().optional(),
@@ -57,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
     const data = updateSchema.parse(body);
 
-    if (data.name || data.email) {
+    if (data.name || data.email || data.image !== undefined) {
       const student = await prisma.student.findUnique({ where: { id } });
       if (student) {
         await prisma.user.update({
@@ -65,6 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           data: {
             ...(data.name ? { name: data.name } : {}),
             ...(data.email ? { email: data.email } : {}),
+            ...(data.image !== undefined ? { image: data.image } : {}),
           },
         });
       }

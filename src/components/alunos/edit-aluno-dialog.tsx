@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil } from "lucide-react";
+import { Pencil, Camera } from "lucide-react";
 import { BELT_LABELS, MODALITY_LABELS } from "@/types";
 import type { Belt, Modality } from "@/types";
 import { format } from "date-fns";
@@ -66,7 +66,7 @@ interface Aluno {
   address: string | null;
   city: string | null;
   state: string | null;
-  user: { name: string; email: string };
+  user: { name: string; email: string; image?: string | null };
 }
 
 interface Props {
@@ -81,6 +81,26 @@ const modalities = Object.keys(MODALITY_LABELS) as Modality[];
 export function EditAlunoDialog({ aluno, branches, onSuccess }: Props) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
+  const [imageUrl, setImageUrl] = useState(aluno.user.image ?? "");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const uploadPhoto = async (file: File) => {
+    setUploadError("");
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const body = await res.json();
+      if (res.ok) setImageUrl(body.url);
+      else setUploadError(body.error ?? "Falha ao enviar a foto");
+    } catch {
+      setUploadError("Falha ao enviar a foto");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const birthDateStr = aluno.birthDate
     ? format(new Date(aluno.birthDate), "yyyy-MM-dd")
@@ -117,12 +137,12 @@ export function EditAlunoDialog({ aluno, branches, onSuccess }: Props) {
     const res = await fetch(`/api/alunos/${aluno.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, image: imageUrl }),
     });
     if (res.ok) {
       const updated = await res.json();
       // Merge user fields since PATCH only returns student
-      onSuccess({ ...aluno, ...updated, user: { name: data.name, email: data.email } });
+      onSuccess({ ...aluno, ...updated, user: { name: data.name, email: data.email, image: imageUrl } });
       setOpen(false);
     } else {
       const body = await res.json();
@@ -151,6 +171,42 @@ export function EditAlunoDialog({ aluno, branches, onSuccess }: Props) {
               {error}
             </p>
           )}
+
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0">
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl} alt="Foto do aluno" className="w-full h-full object-cover" />
+              ) : (
+                <Camera className="w-6 h-6 text-gray-500" />
+              )}
+            </div>
+            <div>
+              <label className="inline-block cursor-pointer text-sm text-red-400 hover:text-red-300 font-medium">
+                {uploading ? "Enviando..." : imageUrl ? "Trocar foto" : "Escolher foto"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadPhoto(f);
+                  }}
+                />
+              </label>
+              {imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setImageUrl("")}
+                  className="block text-xs text-gray-400 hover:text-gray-200 mt-1"
+                >
+                  Remover foto
+                </button>
+              )}
+              {uploadError && <p className="text-red-400 text-xs mt-1">{uploadError}</p>}
+            </div>
+          </div>
 
           <div>
             <Label className="text-gray-300">Nome *</Label>

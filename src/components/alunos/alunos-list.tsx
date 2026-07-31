@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BELT_COLORS, BELT_LABELS, MODALITY_LABELS } from "@/types";
 import type { Belt, Modality } from "@/types";
 import { EditAlunoDialog } from "./edit-aluno-dialog";
@@ -24,7 +24,7 @@ interface Student {
   address: string | null;
   city: string | null;
   state: string | null;
-  user: { name: string; email: string };
+  user: { name: string; email: string; image?: string | null };
   branch: { name: string };
   payments: { status: string }[];
 }
@@ -51,6 +51,9 @@ export function AlunosList({ initialStudents, branches }: Props) {
           <div key={student.id} className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-3 transition-colors">
             <Link href={`/alunos/${student.id}`} className="flex items-center gap-3 flex-1 min-w-0">
               <Avatar className="w-10 h-10 flex-shrink-0">
+                {student.user.image && (
+                  <AvatarImage src={student.user.image} alt={student.user.name} className="object-cover" />
+                )}
                 <AvatarFallback className="bg-gray-700 text-white text-sm font-bold">
                   {initials}
                 </AvatarFallback>

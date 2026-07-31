@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, Camera } from "lucide-react";
 import { BELT_LABELS, MODALITY_LABELS } from "@/types";
 import type { Belt, Modality } from "@/types";
 
@@ -50,6 +50,9 @@ interface Branch {
 export function AddAlunoDialog({ branches }: { branches: Branch[] }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const router = useRouter();
 
   const {
@@ -63,16 +66,34 @@ export function AddAlunoDialog({ branches }: { branches: Branch[] }) {
     defaultValues: { belt: "BRANCA", modality: "BJJ", branchId: branches[0]?.id ?? "" },
   });
 
+  const uploadPhoto = async (file: File) => {
+    setUploadError("");
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const body = await res.json();
+      if (res.ok) setImageUrl(body.url);
+      else setUploadError(body.error ?? "Falha ao enviar a foto");
+    } catch {
+      setUploadError("Falha ao enviar a foto");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const onSubmit = async (data: FormData) => {
     setError("");
     const res = await fetch("/api/alunos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, image: imageUrl || undefined }),
     });
     if (res.ok) {
       setOpen(false);
       reset();
+      setImageUrl("");
       router.refresh();
     } else {
       const body = await res.json();
@@ -105,6 +126,33 @@ export function AddAlunoDialog({ branches }: { branches: Branch[] }) {
           )}
 
           <div className="grid grid-cols-1 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0">
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imageUrl} alt="Foto do aluno" className="w-full h-full object-cover" />
+                ) : (
+                  <Camera className="w-6 h-6 text-gray-500" />
+                )}
+              </div>
+              <div>
+                <label className="inline-block cursor-pointer text-sm text-red-400 hover:text-red-300 font-medium">
+                  {uploading ? "Enviando..." : imageUrl ? "Trocar foto" : "Escolher foto"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadPhoto(f);
+                    }}
+                  />
+                </label>
+                {uploadError && <p className="text-red-400 text-xs mt-1">{uploadError}</p>}
+              </div>
+            </div>
+
             <div>
               <Label className="text-gray-300">Nome *</Label>
               <Input {...register("name")} className="bg-gray-800 border-gray-700 text-white mt-1" />

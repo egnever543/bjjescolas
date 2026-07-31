@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BELT_COLORS, BELT_LABELS, MODALITY_LABELS } from "@/types";
@@ -61,6 +61,9 @@ export default async function AlunoDetailPage({ params }: { params: Promise<{ id
 
         <div className="flex items-start gap-4">
           <Avatar className="w-16 h-16 flex-shrink-0">
+            {student.user.image && (
+              <AvatarImage src={student.user.image} alt={student.user.name} className="object-cover" />
+            )}
             <AvatarFallback className="bg-gray-700 text-white text-xl font-bold">
               {initials}
             </AvatarFallback>

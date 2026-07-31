@@ -34,6 +34,7 @@ const createStudentSchema = z.object({
   belt: z.string().optional(),
   degree: z.number().optional(),
   modality: z.string().optional(),
+  image: z.string().optional(),
   branchId: z.string(),
   emergencyContact: z.string().optional(),
   emergencyPhone: z.string().optional(),
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
         name: data.name,
         email: data.email,
         password: hashedPassword,
+        image: data.image,
         role: "STUDENT",
         student: {
           create: {
