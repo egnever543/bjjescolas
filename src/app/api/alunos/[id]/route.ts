@@ -16,6 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       branch: { include: { academy: true } },
       graduations: { orderBy: { promotedAt: "desc" } },
       checkIns: {
+        where: { confirmed: true },
         include: { class: true },
         orderBy: { date: "desc" },
         take: 30,

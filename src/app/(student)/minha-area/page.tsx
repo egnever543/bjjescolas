@@ -33,6 +33,7 @@ async function getStudentData(userId: string) {
         },
       },
       checkIns: {
+        where: { confirmed: true },
         include: { class: true },
         orderBy: { date: "desc" },
         take: 10,

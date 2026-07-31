@@ -21,6 +21,7 @@ async function getStudent(id: string) {
       branch: { include: { academy: { include: { branches: { select: { id: true, name: true } } } } } },
       graduations: { orderBy: { promotedAt: "desc" } },
       checkIns: {
+        where: { confirmed: true },
         include: { class: true },
         orderBy: { date: "desc" },
         take: 30,

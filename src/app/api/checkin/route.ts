@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Aluno pode marcar a si mesmo; gestor/professor precisa ter acesso à filial da aula.
+    // Quando o professor/dono marca, a presença já entra confirmada;
+    // quando o aluno marca a si mesmo, entra pendente (aguardando conferência).
     const isSelfCheckin = targetStudent.userId === session.user.id;
     if (!isSelfCheckin) {
       const branchIds = await getAccessibleBranchIds(session.user.id!);
@@ -45,6 +47,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Sem permissão para esta filial" }, { status: 403 });
       }
     }
+    const confirmed = !isSelfCheckin;
 
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -60,11 +63,19 @@ export async function POST(req: NextRequest) {
     });
 
     if (existing) {
+      // Se já existe um pendente e é o professor marcando, confirma na hora.
+      if (confirmed && !existing.confirmed) {
+        const updated = await prisma.checkIn.update({
+          where: { id: existing.id },
+          data: { confirmed: true },
+        });
+        return NextResponse.json(updated);
+      }
       return NextResponse.json(existing);
     }
 
     const checkIn = await prisma.checkIn.create({
-      data: { studentId, classId },
+      data: { studentId, classId, confirmed },
     });
 
     return NextResponse.json(checkIn, { status: 201 });

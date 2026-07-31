@@ -88,7 +88,8 @@ export default async function StudentCheckinPage() {
       ) : (
         <div className="space-y-4">
           {todayClasses.map((cls) => {
-            const isCheckedIn = cls.checkIns.some((ci) => ci.studentId === student.id);
+            const myCheckIn = cls.checkIns.find((ci) => ci.studentId === student.id);
+            const isCheckedIn = !!myCheckIn;
 
             return (
               <Card key={cls.id} className="bg-gray-900 border-gray-800">
@@ -115,6 +116,7 @@ export default async function StudentCheckinPage() {
                     studentName={student.user.name}
                     classId={cls.id}
                     isCheckedIn={isCheckedIn}
+                    confirmed={myCheckIn?.confirmed ?? false}
                   />
                 </CardContent>
               </Card>

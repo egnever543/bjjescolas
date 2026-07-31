@@ -57,6 +57,7 @@ async function getStats(userId: string) {
   const todayClasses = allClasses.filter((c) => c.dayOfWeek === todayDay);
   const checkInsToday = await prisma.checkIn.count({
     where: {
+      confirmed: true,
       date: {
         gte: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
         lt: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1),

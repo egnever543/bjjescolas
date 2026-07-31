@@ -4,7 +4,7 @@ import { getAccessibleBranchIds } from "@/lib/access";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckInButton } from "@/components/alunos/checkin-button";
+import { CheckinManageRow } from "@/components/alunos/checkin-manage-row";
 import { MODALITY_LABELS } from "@/types";
 import type { Modality } from "@/types";
 import { Clock, Users } from "lucide-react";
@@ -71,8 +71,10 @@ export default async function CheckInPage() {
       ) : (
         <div className="space-y-4">
           {classes.map((cls) => {
-            const checkedInIds = new Set(cls.checkIns.map((ci) => ci.studentId));
+            const checkInByStudent = new Map(cls.checkIns.map((ci) => [ci.studentId, ci]));
             const students = cls.branch.students;
+            const confirmedCount = cls.checkIns.filter((ci) => ci.confirmed).length;
+            const pendingCount = cls.checkIns.filter((ci) => !ci.confirmed).length;
 
             return (
               <Card key={cls.id} className="bg-gray-900 border-gray-800">
@@ -87,8 +89,14 @@ export default async function CheckInPage() {
                         </span>
                         <span className="flex items-center gap-1 text-gray-400 text-xs">
                           <Users className="w-3 h-3" />
-                          {cls.checkIns.length}/{students.length}
+                          {confirmedCount}/{students.length} presentes
                         </span>
+                        {pendingCount > 0 && (
+                          <span className="flex items-center gap-1 text-yellow-400 text-xs">
+                            <Clock className="w-3 h-3" />
+                            {pendingCount} aguardando
+                          </span>
+                        )}
                       </div>
                     </div>
                     <span className="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded-full">
@@ -102,15 +110,20 @@ export default async function CheckInPage() {
                       Nenhum aluno nesta filial
                     </p>
                   ) : (
-                    students.map((student) => (
-                      <CheckInButton
-                        key={student.id}
-                        studentId={student.id}
-                        studentName={student.user.name}
-                        classId={cls.id}
-                        isCheckedIn={checkedInIds.has(student.id)}
-                      />
-                    ))
+                    students.map((student) => {
+                      const ci = checkInByStudent.get(student.id);
+                      const status = ci ? (ci.confirmed ? "confirmed" : "pending") : "none";
+                      return (
+                        <CheckinManageRow
+                          key={student.id}
+                          studentId={student.id}
+                          studentName={student.user.name}
+                          classId={cls.id}
+                          checkInId={ci?.id ?? null}
+                          status={status}
+                        />
+                      );
+                    })
                   )}
                 </CardContent>
               </Card>

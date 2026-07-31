@@ -219,6 +219,9 @@ model CheckIn {
   classId   String
   class     Class    @relation(fields: [classId], references: [id])
   date      DateTime @default(now())
+  // Check-in do aluno entra como não-confirmado (aguardando conferência do
+  // professor). Só conta como presença quando confirmed = true.
+  confirmed Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@unique([studentId, classId, date])

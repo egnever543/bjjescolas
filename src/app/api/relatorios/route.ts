@@ -19,11 +19,11 @@ export async function GET() {
               students: {
                 include: {
                   payments: { orderBy: { dueDate: "desc" }, take: 1 },
-                  checkIns: true,
+                  checkIns: { where: { confirmed: true } },
                 },
               },
               classes: {
-                include: { checkIns: true },
+                include: { checkIns: { where: { confirmed: true } } },
               },
             },
           },
@@ -65,6 +65,7 @@ export async function GET() {
   const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
   const recentCheckIns = await prisma.checkIn.findMany({
     where: {
+      confirmed: true,
       student: { branchId: { in: allBranchIds } },
       date: { gte: sevenDaysAgo },
     },
