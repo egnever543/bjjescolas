@@ -1,36 +1,32 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getAccessibleBranchIds } from "@/lib/access";
 import { AddAulaDialog } from "@/components/aulas/add-aula-dialog";
 import { AulasList } from "@/components/aulas/aulas-list";
 
 async function getClasses(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      ownedAcademy: {
-        include: {
-          branches: { select: { id: true, name: true } },
-        },
+  // Filiais acessíveis conforme o papel (professor -> a própria; dono -> as dele).
+  const branchIds = await getAccessibleBranchIds(userId);
+
+  const [classes, branches, professors] = await Promise.all([
+    prisma.class.findMany({
+      where: { branchId: { in: branchIds } },
+      include: {
+        professor: { include: { user: true } },
+        branch: true,
       },
-    },
-  });
-
-  const branchIds = user?.ownedAcademy?.branches.map((b) => b.id) ?? [];
-  const branches = user?.ownedAcademy?.branches ?? [];
-
-  const classes = await prisma.class.findMany({
-    where: { branchId: { in: branchIds } },
-    include: {
-      professor: { include: { user: true } },
-      branch: true,
-    },
-    orderBy: { startTime: "asc" },
-  });
-
-  const professors = await prisma.professor.findMany({
-    where: { branchId: { in: branchIds } },
-    include: { user: true },
-  });
+      orderBy: { startTime: "asc" },
+    }),
+    prisma.branch.findMany({
+      where: { id: { in: branchIds } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.professor.findMany({
+      where: { branchId: { in: branchIds } },
+      include: { user: true },
+    }),
+  ]);
 
   return { classes, branches, professors };
 }

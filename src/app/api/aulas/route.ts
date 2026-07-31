@@ -38,6 +38,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = createSchema.parse(body);
 
+    // Só permite criar aula em uma filial acessível ao usuário
+    // e com um professor que pertença a essa mesma filial.
+    const branchIds = await getAccessibleBranchIds(session.user.id!);
+    if (!branchIds.includes(data.branchId)) {
+      return NextResponse.json({ error: "Filial inválida" }, { status: 403 });
+    }
+    const professor = await prisma.professor.findUnique({
+      where: { id: data.professorId },
+      select: { branchId: true },
+    });
+    if (!professor || professor.branchId !== data.branchId) {
+      return NextResponse.json({ error: "Professor inválido para esta filial" }, { status: 403 });
+    }
+
     const cls = await prisma.class.create({
       data: {
         name: data.name,
