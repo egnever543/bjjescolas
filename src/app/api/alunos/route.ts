@@ -52,6 +52,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = createStudentSchema.parse(body);
 
+    // Só permite cadastrar aluno em uma filial que o usuário pode acessar
+    // (professor -> a própria filial; dono -> as filiais dele).
+    const branchIds = await getAccessibleBranchIds(session.user.id!);
+    if (!branchIds.includes(data.branchId)) {
+      return NextResponse.json({ error: "Filial inválida" }, { status: 403 });
+    }
+
     const exists = await prisma.user.findUnique({ where: { email: data.email } });
     if (exists) return NextResponse.json({ error: "Email já cadastrado" }, { status: 400 });
 
